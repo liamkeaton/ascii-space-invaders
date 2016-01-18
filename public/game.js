@@ -3,7 +3,6 @@
  */
 var Game = function() {
     this.config = {
-        fps: 50,
         initalLives: 3,
         difficultyMultiplier: 0.2,
 
@@ -41,9 +40,9 @@ var Game = function() {
 
     this.bounds = {
         left: 0,
-        right: 39,
+        right: 0,
         top: 0,
-        bottom: 19,
+        bottom: 0,
     };
 
     this.score = 0;
@@ -63,12 +62,32 @@ Game.prototype.init = function(element) {
     // Set the game element
     this.element = element;
 
-    // Delta t is the time to update/draw.
-    this.delta = 1/this.config.fps
+    // Set up the game screen
+    this.setBounds();
 
     // Initialise the content
     this.clear();
 };
+
+/**
+ * Set the game bounds based on the element and character dimensions
+ */
+Game.prototype.setBounds = function() {
+    var width = this.element.offsetWidth,
+        height = this.element.offsetHeight,
+        ruler = document.createElement('span'),
+        style = window.getComputedStyle(this.element, null),
+        line = parseInt(style.getPropertyValue('line-height'));
+
+    ruler.style.font = style.getPropertyValue('font');
+    ruler.style.fontSize = style.getPropertyValue('font-size');
+    ruler.innerHTML = this.characters.block;
+
+    document.body.appendChild(ruler);
+    this.bounds.right = parseInt(width / ruler.offsetWidth);
+    this.bounds.bottom = parseInt(height / line);
+    document.body.removeChild(ruler);
+}
 
 /**
  * Helper method to retrive the current state
@@ -172,6 +191,22 @@ Game.prototype.draw = function(x, y, string) {
 };
 
 /**
+ * Helper function to draw text in the center
+ * @param {String} string
+ */
+Game.prototype.drawCenter = function(string) {
+    var length = string.length
+        x = 0,
+        y = Math.floor(this.bounds.bottom/2);
+
+    if (length < this.bounds.right) {
+        x = parseInt((this.bounds.right / 2) - (length / 2));
+    }
+
+    return this.draw(x, y, string);
+}
+
+/**
  * Render the content to the element, wont render if nothing has changed
  * @return {Boolean} If changes to content were made
  */
@@ -188,23 +223,26 @@ Game.prototype.render = function() {
  * Kicks of the game by loading the welcome state and starting the game loop
  */
 Game.prototype.start = function() {
-    var self = this;
+    var self = this,
+        lastTimestamp = 0;
 
     // Reset the game state
     this.reset();
 
-    this.interval = setInterval(run, 1000 / this.config.fps);
+    // Start by calling the first step
+    window.requestAnimationFrame(step);
 
     /**
-     * Run function which gets the current state, updates state, draws state and renders
+     * Gets the current state, updates state, draws state and renders
+     * @param {Number} timestamp
      */
-    function run() {
+    function step(timestamp) {
         var currentState = self.currentState();
 
         if (currentState) {
             // Update the game with the delta period
             if(currentState.update) {
-                currentState.update(self, self.delta);
+                currentState.update(self, ((timestamp - lastTimestamp) / 1000));
             }
 
             // Draw the current state
@@ -215,6 +253,10 @@ Game.prototype.start = function() {
             // Render to the canvas any changes
             self.render();
         }
+
+        // Call the next step
+        lastTimestamp = timestamp;
+        window.requestAnimationFrame(step);
     }
 };
 
@@ -240,7 +282,7 @@ var WelcomeState = function(game) {};
  */
 WelcomeState.prototype.draw = function(game) {
     game.clear();
-    game.draw(5, 5, 'Welcome Press "Space"');
+    game.drawCenter('Welcome Press "Space"');
 }
 
 /**
@@ -288,7 +330,7 @@ LevelIntroState.prototype.update = function(game, delta) {
  */
 LevelIntroState.prototype.draw = function(game) {
     game.clear();
-    game.draw(5, 5, 'Start Level ' + game.level + ' in ' + this.countdownMessage);
+    game.drawCenter('Start Level ' + game.level + ' in ' + this.countdownMessage);
 }
 
 /**
@@ -566,7 +608,7 @@ var GameOverState = function(game) {};
  */
 GameOverState.prototype.draw = function(game) {
     game.clear();
-    game.draw(0, 5, 'Game Over, Press "Escape" to restart');
+    game.drawCenter('Game Over, Press "Escape" to restart');
 };
 
 /**
