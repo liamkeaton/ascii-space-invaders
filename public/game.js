@@ -492,7 +492,7 @@ PlayState.prototype.update = function(game, delta) {
         }
 
         // Invaders have landed
-        if (invader.y > game.bounds.bottom) {
+        if (invader.y >= game.bounds.bottom) {
             game.lives = 0;
         }
     }
